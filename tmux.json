@@ -1,0 +1,54 @@
+{
+  "session_name": "pzapp",
+  "start_directory": "~/code/apps/pzapp",
+  "windows": [
+    {
+      "window_name": "coding",
+      "layout": "tiled",
+      "panes": [
+        {
+          "shell_command": "codex",
+          "focus": true
+        },
+        {
+          "shell_command": "zsh"
+        },
+        {
+          "shell_command": "zsh"
+        }
+      ]
+    },
+    {
+      "window_name": "docs + git",
+      "layout": "e022,231x62,0,0{120x62,0,0,6,110x62,121,0[110x46,121,0,7,110x15,121,47,8]}",
+      "panes": [
+        {
+          "shell_command": ["cd docs", "frog"],
+          "focus": true
+        },
+        {
+          "shell_command": ["lg"]
+        },
+        {
+          "shell_command": "tty-clock -c -C 6"
+        }
+      ]
+    },
+    {
+      "window_name": "notes + todos",
+      "layout": "e022,231x62,0,0{120x62,0,0,6,110x62,121,0[110x46,121,0,7,110x15,121,47,8]}",
+      "panes": [
+        {
+          "shell_command": ["glues"],
+          "focus": true
+        },
+        {
+          "shell_command": ["basilk"]
+        },
+        {
+          "shell_command": "tty-clock -c -C 6"
+        }
+      ]
+    }
+  ]
+}
