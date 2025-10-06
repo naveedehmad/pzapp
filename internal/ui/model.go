@@ -211,9 +211,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.helpVisible {
 				m.helpVisible = false
 				m.resizeList()
-			} else if m.list.IsFiltered() {
+				return m, nil
+			} else if len(m.list.Items()) == 0 {
+				// When list is empty (after filtering and killing), refresh to show all ports
 				m.list.ResetFilter()
+				m.statusMsg = "🔄 Refreshing..."
+				cmds = append(cmds, loadPortsCmd(m.provider))
+				return m, tea.Batch(cmds...)
 			}
+			// Let escape fall through to list component to handle search mode exit
 		case "r":
 			m.statusMsg = "🔄 Refreshing..."
 			cmds = append(cmds, loadPortsCmd(m.provider))
