@@ -211,6 +211,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.helpVisible {
 				m.helpVisible = false
 				m.resizeList()
+			} else if m.list.IsFiltered() {
+				m.list.ResetFilter()
 			}
 		case "r":
 			m.statusMsg = "🔄 Refreshing..."
