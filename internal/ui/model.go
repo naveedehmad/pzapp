@@ -93,9 +93,9 @@ func New(provider ports.Provider) Model {
 	baseDelegate.ShowDescription = false
 	baseDelegate.SetSpacing(0)
 	baseDelegate.Styles.NormalTitle = listTitleStyle
-	baseDelegate.Styles.SelectedTitle = selectedTitleBase.Background(lipgloss.Color(tokyoAccentBlue))
+	baseDelegate.Styles.SelectedTitle = selectedTitleBase.Background(lipgloss.Color(matrixAccentNeon))
 	baseDelegate.Styles.NormalDesc = listDescStyle
-	baseDelegate.Styles.SelectedDesc = selectedDescBase.Background(lipgloss.Color(tokyoAccentPurple))
+	baseDelegate.Styles.SelectedDesc = selectedDescBase.Background(lipgloss.Color(matrixAccentPink))
 
 	model := Model{provider: provider}
 
@@ -107,7 +107,7 @@ func New(provider ports.Provider) Model {
 	l.SetShowHelp(false)
 	l.SetFilteringEnabled(true)
 	l.Styles.HelpStyle = helpStyle
-	l.Styles.FilterCursor = filterCursorBase.Foreground(lipgloss.Color(tokyoAccentBlue))
+	l.Styles.FilterCursor = filterCursorBase.Foreground(lipgloss.Color(matrixAccentNeon))
 	l.Styles.FilterPrompt = filterPromptStyle
 	l.Styles.TitleBar = filterBarStyle
 
@@ -456,25 +456,70 @@ func (p portItem) Title() string {
 	if p.layout != nil {
 		layout = *p.layout
 	}
+	
+	// Creative protocol indicators
 	proto := strings.ToUpper(p.entry.Protocol)
-	state := strings.ToLower(p.entry.State)
-	if state == "" {
-		state = "listening"
+	var protoIcon string
+	switch proto {
+	case "TCP":
+		protoIcon = "🔗"
+	case "UDP":
+		protoIcon = "📡"
+	case "HTTP":
+		protoIcon = "🌐"
+	case "HTTPS":
+		protoIcon = "🔐"
+	default:
+		protoIcon = "⚡"
 	}
+	
+	// State with cyberpunk indicators
+	state := strings.ToLower(p.entry.State)
+	var stateIcon string
+	switch state {
+	case "listening":
+		stateIcon = "🎯"
+	case "established":
+		stateIcon = "🔥"
+	case "close_wait":
+		stateIcon = "⏳"
+	case "time_wait":
+		stateIcon = "💭"
+	default:
+		stateIcon = "🌀"
+		if state == "" {
+			state = "listening"
+			stateIcon = "🎯"
+		}
+	}
+	
+	// Port classification with visual indicators
+	var portClassIcon string
+	port := p.entry.Port
+	switch {
+	case port < 1024:
+		portClassIcon = "👑" // System/privileged ports
+	case port >= 1024 && port < 49152:
+		portClassIcon = "🎪" // Registered ports
+	default:
+		portClassIcon = "🎲" // Dynamic/private ports
+	}
+	
+	// Process name with visual enhancement
 	process := p.entry.Process
 	if state != "" {
-		process = fmt.Sprintf("%s (%s)", process, state)
+		process = fmt.Sprintf("%s [%s]", process, state)
 	}
 
 	columns := []string{
-		padded(proto, layout.proto),
-		padded(fmt.Sprintf("%d", p.entry.Port), layout.port),
-		padded(process, layout.process),
-		padded(fmt.Sprintf("%d", p.entry.PID), layout.pid),
-		padded(p.entry.User, layout.user),
-		padded(p.entry.Address, layout.address),
+		padded(fmt.Sprintf("%s %s", protoIcon, proto), layout.proto),
+		padded(fmt.Sprintf("%s %d", portClassIcon, p.entry.Port), layout.port),
+		padded(fmt.Sprintf("%s %s", stateIcon, process), layout.process),
+		padded(fmt.Sprintf("💀 %d", p.entry.PID), layout.pid),
+		padded(fmt.Sprintf("👤 %s", p.entry.User), layout.user),
+		padded(fmt.Sprintf("🌍 %s", p.entry.Address), layout.address),
 	}
-	return "🛰  " + strings.Join(columns, columnSeparator)
+	return "▶ " + strings.Join(columns, " ┃ ")
 }
 
 func (p portItem) Description() string {
@@ -503,13 +548,75 @@ func padded(text string, width int) string {
 
 func (m Model) accentColor(offset int) string {
 	if len(accentCycle) == 0 {
-		return tokyoAccentBlue
+		return matrixAccentNeon
 	}
 	idx := (m.accentIndex + offset) % len(accentCycle)
 	if idx < 0 {
 		idx += len(accentCycle)
 	}
 	return accentCycle[idx]
+}
+
+func (m Model) generateMatrixRain(width int) string {
+	if width <= 0 {
+		return ""
+	}
+	rain := make([]string, width)
+	for i := 0; i < width; i++ {
+		if (m.tickCount+i)%7 == 0 {
+			charIdx := (m.tickCount + i) % len(matrixChars)
+			intensity := (m.tickCount + i) % 4
+			var color string
+			switch intensity {
+			case 0:
+				color = matrixAccentGreen
+			case 1:
+				color = matrixTextDim
+			case 2:
+				color = matrixTextSubtle
+			default:
+				color = matrixBorder
+			}
+			rain[i] = lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(matrixChars[charIdx])
+		} else {
+			rain[i] = " "
+		}
+	}
+	return strings.Join(rain, "")
+}
+
+func (m Model) generateGlitch(text string) string {
+	if m.tickCount%20 == 0 && len(text) > 0 {
+		runes := []rune(text)
+		glitchIdx := m.tickCount % len(runes)
+		if glitchIdx < len(glitchChars) {
+			runes[glitchIdx] = []rune(glitchChars[m.tickCount%len(glitchChars)])[0]
+		}
+		return string(runes)
+	}
+	return text
+}
+
+func (m Model) pulseIntensity() float64 {
+	return 0.5 + 0.5*float64(m.tickCount%30)/30.0
+}
+
+func (m Model) generateDigitalNoise(length int) string {
+	if length <= 0 {
+		return ""
+	}
+	noise := make([]string, length)
+	for i := 0; i < length; i++ {
+		if (m.tickCount+i)%11 == 0 {
+			charIdx := (m.tickCount + i*3) % len(glitchChars)
+			noise[i] = lipgloss.NewStyle().
+				Foreground(lipgloss.Color(matrixTextSubtle)).
+				Render(glitchChars[charIdx])
+		} else {
+			noise[i] = " "
+		}
+	}
+	return strings.Join(noise, "")
 }
 
 func (m *Model) applyAccentStyles() {
@@ -528,22 +635,45 @@ func (m Model) renderHeader() string {
 	accentPrimary := lipgloss.Color(m.accentColor(0))
 	accentSecondary := lipgloss.Color(m.accentColor(1))
 	accentTertiary := lipgloss.Color(m.accentColor(2))
+	accentQuad := lipgloss.Color(m.accentColor(3))
 
-	title := headerTitleBase.Foreground(accentPrimary).Render("🌌 PZAPP")
-	taglineText := "⚡ zap those ports ⚡"
+	// Matrix rain effect at top
+	matrixRain := m.generateMatrixRain(m.width)
+	
+	// Epic title with digital effects
+	titleText := "██████╗ ███████╗ █████╗ ██████╗ ██████╗ \n██╔══██╗╚══███╔╝██╔══██╗██╔══██╗██╔══██╗\n██████╔╝  ███╔╝ ███████║██████╔╝██████╔╝\n██╔═══╝  ███╔╝  ██╔══██║██╔═══╝ ██╔═══╝ \n██║     ███████╗██║  ██║██║     ██║     \n╚═╝     ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝     "
+	title := lipgloss.NewStyle().
+		Foreground(accentPrimary).
+		Bold(true).
+		Render(titleText)
+
+	// Animated tagline with glitch effect
+	taglineText := "⚡ NEURAL NETWORK PORT SCANNER ⚡"
 	if len(taglineCycle) > 0 {
 		taglineText = taglineCycle[m.taglineIndex%len(taglineCycle)]
 	}
-	tagline := headerTaglineBase.Foreground(accentSecondary).Render(taglineText)
-	infoText := fmt.Sprintf("✨ Nebula ops deck · %d active ports", len(m.list.Items()))
-	info := headerSubtitleStyle.Foreground(accentTertiary).Render(infoText)
-	border := headerBorderBase.Foreground(accentTertiary).Render(strings.Repeat("─", max(0, m.width)))
+	glitchedTagline := m.generateGlitch(taglineText)
+	tagline := headerTaglineBase.Foreground(accentSecondary).Render(glitchedTagline)
+	
+	// System status with cyberpunk flair
+	statusLine := fmt.Sprintf("【 QUANTUM CORE ACTIVE 】【 %d TARGETS ACQUIRED 】【 MATRIX SYNCHRONIZED 】", len(m.list.Items()))
+	systemStatus := headerSubtitleStyle.Foreground(accentTertiary).Render(statusLine)
+	
+	// Dynamic border with digital noise
+	borderChars := []string{"═", "━", "▬", "⬛", "▪", "▫", "░", "▒", "▓"}
+	borderChar := borderChars[m.tickCount%len(borderChars)]
+	border := headerBorderBase.Foreground(accentQuad).Render(strings.Repeat(borderChar, max(0, m.width)))
+	
+	// Digital noise line
+	digitalNoise := m.generateDigitalNoise(m.width)
 
 	return lipgloss.JoinVertical(lipgloss.Left,
-		lipgloss.PlaceHorizontal(m.width, lipgloss.Left, title),
-		lipgloss.PlaceHorizontal(m.width, lipgloss.Left, tagline),
-		lipgloss.PlaceHorizontal(m.width, lipgloss.Left, info),
+		matrixRain,
+		lipgloss.PlaceHorizontal(m.width, lipgloss.Center, title),
+		lipgloss.PlaceHorizontal(m.width, lipgloss.Center, tagline),
+		lipgloss.PlaceHorizontal(m.width, lipgloss.Center, systemStatus),
 		border,
+		digitalNoise,
 	)
 }
 
@@ -558,8 +688,8 @@ func (m Model) renderTableHeader() string {
 		m.accentColor(0),
 		m.accentColor(1),
 		m.accentColor(2),
-		tokyoAccentYellow,
-		tokyoAccentGreen,
+		matrixAccentGold,
+		matrixAccentGreen,
 		m.accentColor(0),
 	}
 	styledColumns := make([]string, len(columnTexts))
@@ -574,18 +704,36 @@ func (m Model) renderTableHeader() string {
 
 func (m Model) renderFooter() string {
 	var lines []string
+	
+	// Status with cyberpunk styling
 	if m.errMsg != "" {
-		lines = append(lines, errorStyle.Render(m.errMsg))
+		errorMsg := fmt.Sprintf("【 ⚠️  SYSTEM ERROR ⚠️  】 %s", m.errMsg)
+		lines = append(lines, errorStyle.Render(errorMsg))
 	} else if m.statusMsg != "" {
-		lines = append(lines, statusStyle.Render(m.statusMsg))
+		statusMsg := fmt.Sprintf("【 ⚡ STATUS ⚡ 】 %s", m.statusMsg)
+		lines = append(lines, statusStyle.Render(statusMsg))
 	}
 
 	if m.toast.message != "" {
 		lines = append(lines, toastStyle(m.toast))
 	}
 
-	hint := hintStyle.Render("💡 up/down or j/k move  |  enter/d kill  |  r refresh  |  / search  |  ? help  |  q quit")
+	// Enhanced control hints with cyberpunk aesthetics
+	controlSections := []string{
+		"🎯 j/k/↑↓ NAVIGATE",
+		"💀 enter/d TERMINATE",
+		"🔄 r REFRESH",
+		"🔍 / SCAN",
+		"❓ ? INFO",
+		"💨 q ESCAPE",
+	}
+	controlHint := strings.Join(controlSections, "  ║  ")
+	hint := hintStyle.Render(fmt.Sprintf("【 COMMAND MATRIX 】 %s", controlHint))
 	lines = append(lines, hint)
+	
+	// Digital noise footer
+	digitalFooter := m.generateDigitalNoise(m.width)
+	lines = append(lines, digitalFooter)
 
 	rendered := make([]string, len(lines))
 	for i, line := range lines {
@@ -595,27 +743,42 @@ func (m Model) renderFooter() string {
 }
 
 func renderKillModal(entry ports.Port, inFlight bool, width int) string {
-	subtitle := fmt.Sprintf("💀🗡️ %s on %s/%d", entry.Process, strings.ToUpper(entry.Protocol), entry.Port)
-	status := "💀 Ready to slay this port?"
+	// Epic ASCII art warning
+	warningArt := `
+    ███████╗██╗    ██╗ █████╗ ██████╗ ███╗   ██╗██╗███╗   ██╗ ██████╗ 
+    ██╔════╝██║    ██║██╔══██╗██╔══██╗████╗  ██║██║████╗  ██║██╔════╝ 
+    ███████╗██║ █╗ ██║███████║██████╔╝██╔██╗ ██║██║██╔██╗ ██║██║  ███╗
+    ╚════██║██║███╗██║██╔══██║██╔══██╗██║╚██╗██║██║██║╚██╗██║██║   ██║
+    ███████║╚███╔███╔╝██║  ██║██║  ██║██║ ╚████║██║██║ ╚████║╚██████╔╝
+    ╚══════╝ ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═══╝ ╚═════╝ `
+	
+	subtitle := fmt.Sprintf("【 TARGET ACQUIRED 】 %s | %s:%d | PID:%d", 
+		entry.Process, strings.ToUpper(entry.Protocol), entry.Port, entry.PID)
+	
+	var status string
 	if inFlight {
-		status = "💀🌀 Dispatching SIGTERM..."
+		status = "🔥💀 QUANTUM TERMINATION SEQUENCE INITIATED 💀🔥\n⚡⚡⚡ NEURAL PATHWAYS SEVERING ⚡⚡⚡"
+	} else {
+		status = "💀 INITIATE DIGITAL ANNIHILATION PROTOCOL? 💀\n⚔️  WARNING: PROCESS WILL BE ELIMINATED ⚔️"
 	}
 
-	modalWidth := clamp(width-4, 30, 72)
+	modalWidth := clamp(width-4, 40, 80)
 	innerWidth := modalWidth - modalStyle.GetPaddingLeft() - modalStyle.GetPaddingRight()
-	if innerWidth < 16 {
-		innerWidth = 16
+	if innerWidth < 20 {
+		innerWidth = 20
 	}
 
 	lines := []string{
-		modalTitleBase.Render("Confirm termination"),
+		modalTitleBase.Render(warningArt),
+		"",
 		modalSubtitleStyle.Render(subtitle),
 		"",
 		modalStatusBase.Render(status),
+		"",
 		lipgloss.JoinHorizontal(lipgloss.Left,
-			modalConfirmBase.Render("💀🗡️ [y] confirm"),
-			modalActionSpacer.Render("  "),
-			modalCancelBase.Render("[n] retreat"),
+			modalConfirmBase.Render("💀⚔️  [Y] EXECUTE TERMINATION"),
+			modalActionSpacer.Render("    "),
+			modalCancelBase.Render("🛡️  [N] ABORT MISSION"),
 		),
 	}
 
@@ -629,20 +792,66 @@ func renderKillModal(entry ports.Port, inFlight bool, width int) string {
 }
 
 func renderHelp(width int) string {
-	items := []string{
-		"navigate", "j/k", "arrow keys also work",
-		"kill", "enter/d", "select then confirm",
-		"refresh", "r", "reload port data",
-		"search", "/", "filter by text",
-		"help", "?", "toggle this panel",
+	helpHeader := `
+    ██╗  ██╗███████╗██╗     ██████╗     ███╗   ███╗ █████╗ ████████╗██████╗ ██╗██╗  ██╗
+    ██║  ██║██╔════╝██║     ██╔══██╗    ████╗ ████║██╔══██╗╚══██╔══╝██╔══██╗██║╚██╗██╔╝
+    ███████║█████╗  ██║     ██████╔╝    ██╔████╔██║███████║   ██║   ██████╔╝██║ ╚███╔╝ 
+    ██╔══██║██╔══╝  ██║     ██╔═══╝     ██║╚██╔╝██║██╔══██║   ██║   ██╔══██╗██║ ██╔██╗ 
+    ██║  ██║███████╗███████╗██║         ██║ ╚═╝ ██║██║  ██║   ██║   ██║  ██║██║██╔╝ ██╗
+    ╚═╝  ╚═╝╚══════╝╚══════╝╚═╝         ╚═╝     ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝  ╚═╝`
+
+	commandSections := [][]string{
+		{"【 NAVIGATION PROTOCOLS 】", "", ""},
+		{"🎯 Movement", "j/k ↑↓", "Navigate through targets"},
+		{"🎯 Selection", "enter", "Select current target"},
+		{"", "", ""},
+		{"【 COMBAT OPERATIONS 】", "", ""},
+		{"💀 Terminate", "d/enter", "Execute termination protocol"},
+		{"⚔️  Confirm", "y/Y", "Confirm elimination"},
+		{"🛡️  Abort", "n/N/esc", "Abort current operation"},
+		{"", "", ""},
+		{"【 SYSTEM OPERATIONS 】", "", ""},
+		{"🔄 Refresh", "r", "Reload target matrix"},
+		{"🔍 Scan", "/", "Initiate search protocol"},
+		{"💨 Escape", "esc", "Exit search mode"},
+		{"❓ Info", "?", "Toggle command matrix"},
+		{"💨 Logout", "q/ctrl+c", "Exit system"},
 	}
 
-	rows := make([]string, 0, len(items)/3)
-	for i := 0; i < len(items); i += 3 {
-		rows = append(rows, fmt.Sprintf("%-10s %-10s %s", items[i], items[i+1], items[i+2]))
+	rows := make([]string, 0, len(commandSections))
+	for _, section := range commandSections {
+		if section[0] == "" {
+			rows = append(rows, "")
+		} else if section[1] == "" {
+			// Header section
+			headerStyle := lipgloss.NewStyle().
+				Foreground(lipgloss.Color(matrixAccentNeon)).
+				Bold(true)
+			rows = append(rows, headerStyle.Render(section[0]))
+		} else {
+			// Command row
+			commandStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(matrixText))
+			keyStyle := lipgloss.NewStyle().
+				Foreground(lipgloss.Color(matrixAccentPink)).
+				Bold(true)
+			descStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(matrixTextDim))
+			
+			row := fmt.Sprintf("%-20s %-12s %s",
+				commandStyle.Render(section[0]),
+				keyStyle.Render(section[1]),
+				descStyle.Render(section[2]))
+			rows = append(rows, row)
+		}
 	}
 
-	body := lipgloss.JoinVertical(lipgloss.Left, rows...)
+	headerStyled := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(matrixAccentGold)).
+		Render(helpHeader)
+	
+	body := lipgloss.JoinVertical(lipgloss.Left, 
+		headerStyled,
+		"",
+		strings.Join(rows, "\n"))
 	panel := helpPanelStyle.Render(body)
 	return lipgloss.PlaceHorizontal(width, lipgloss.Center, panel)
 }
@@ -726,66 +935,84 @@ func clamp(value, low, high int) int {
 }
 
 const (
-	tokyoBase         = "#1a1b26"
-	tokyoSurface      = "#1f2335"
-	tokyoSurfaceAlt   = "#24283b"
-	tokyoSurfaceLine  = "#2e3247"
-	tokyoText         = "#c0caf5"
-	tokyoMutedText    = "#a9b1d6"
-	tokyoSubtleText   = "#565f89"
-	tokyoAccentBlue   = "#7aa2f7"
-	tokyoAccentCyan   = "#7dcfff"
-	tokyoAccentPurple = "#bb9af7"
-	tokyoAccentGreen  = "#9ece6a"
-	tokyoAccentYellow = "#e0af68"
-	tokyoAccentRed    = "#f7768e"
+	// Matrix/Cyberpunk Color Palette
+	matrixBlack       = "#000000"
+	matrixDeepDark    = "#0a0a0a"
+	matrixDark        = "#0f0f23"
+	matrixSurface     = "#1a1a2e"
+	matrixPanel       = "#16213e"
+	matrixBorder      = "#0f3460"
+	matrixText        = "#00ff41"
+	matrixTextDim     = "#00cc33"
+	matrixTextSubtle  = "#009933"
+	matrixAccentNeon  = "#00ffff"
+	matrixAccentPink  = "#ff007f"
+	matrixAccentPurple= "#9d4edd"
+	matrixAccentBlue  = "#0077be"
+	matrixAccentGreen = "#39ff14"
+	matrixAccentRed   = "#ff073a"
+	matrixAccentGold  = "#ffd700"
+	matrixWarning     = "#ffff00"
 )
 
 var accentCycle = []string{
-	tokyoAccentBlue,
-	tokyoAccentPurple,
-	tokyoAccentCyan,
-	tokyoAccentGreen,
+	matrixAccentNeon,
+	matrixAccentPink,
+	matrixAccentPurple,
+	matrixAccentBlue,
+	matrixAccentGreen,
+	matrixAccentGold,
 }
 
+var matrixChars = []string{"0", "1", "╫", "╬", "│", "┤", "┐", "└", "┴", "┬", "├", "─", "┼", "╭", "╮", "╯", "╰"}
+
+var glitchChars = []string{"█", "▉", "▊", "▋", "▌", "▍", "▎", "▏", "░", "▒", "▓", "■", "□", "▪", "▫"}
+
 var taglineCycle = []string{
-	"⚡ zap those ports ⚡",
-	"🗡️ slay stray sockets 🗡️",
-	"🚀 keep your stack lean 🚀",
+	"⚡ NEURAL NETWORK PORT SCANNER ⚡",
+	"🔥 MATRIX PROTOCOL TERMINATOR 🔥", 
+	"🌊 DIGITAL OCEAN NAVIGATOR 🌊",
+	"⚔️  CYBER WARFARE SPECIALIST ⚔️",
+	"🛸 QUANTUM PORT DECIMATOR 🛸",
+	"💀 GHOST IN THE SHELL 💀",
+	"🎯 PRECISION STRIKE SYSTEM 🎯",
+	"🌌 INTERDIMENSIONAL GATEWAY 🌌",
 }
 
 var (
 	listTitleStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(tokyoText)).
-			Background(lipgloss.Color(tokyoSurface)).
+			Foreground(lipgloss.Color(matrixText)).
+			Background(lipgloss.Color(matrixSurface)).
 			PaddingLeft(1)
 
 	listDescStyle = listTitleStyle.Copy().
-			Foreground(lipgloss.Color(tokyoMutedText))
+			Foreground(lipgloss.Color(matrixTextDim))
 
 	selectedTitleBase = lipgloss.NewStyle().
-				Foreground(lipgloss.Color(tokyoBase)).
+				Foreground(lipgloss.Color(matrixBlack)).
 				Bold(true).
 				PaddingLeft(1)
 
 	selectedDescBase = lipgloss.NewStyle().
-				Foreground(lipgloss.Color(tokyoBase)).
+				Foreground(lipgloss.Color(matrixBlack)).
 				PaddingLeft(1)
 
 	tableHeaderBase = lipgloss.NewStyle().
-			Background(lipgloss.Color(tokyoSurfaceAlt)).
+			Background(lipgloss.Color(matrixPanel)).
 			Bold(true).
 			PaddingLeft(1)
 
 	tableSeparatorStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color(tokyoSubtleText))
+				Foreground(lipgloss.Color(matrixTextSubtle))
 
 	filterBarStyle = lipgloss.NewStyle().
-			Background(lipgloss.Color(tokyoSurfaceAlt)).
-			Foreground(lipgloss.Color(tokyoMutedText)).
-			Padding(0, 1, 0, 1)
+			Background(lipgloss.Color(matrixPanel)).
+			Foreground(lipgloss.Color(matrixTextDim)).
+			Padding(0, 1, 0, 1).
+			Border(lipgloss.DoubleBorder(), false, false, true, false).
+			BorderForeground(lipgloss.Color(matrixAccentNeon))
 
-	filterPromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoMutedText)).Bold(true)
+	filterPromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(matrixAccentNeon)).Bold(true)
 	filterCursorBase  = lipgloss.NewStyle()
 
 	headerTitleBase = lipgloss.NewStyle().
@@ -793,73 +1020,73 @@ var (
 			PaddingLeft(1)
 
 	headerTaglineBase = lipgloss.NewStyle().
-				Foreground(lipgloss.Color(tokyoAccentBlue)).
+				Foreground(lipgloss.Color(matrixAccentNeon)).
 				Bold(true).
 				PaddingLeft(1)
 
 	headerSubtitleStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color(tokyoMutedText)).
+				Foreground(lipgloss.Color(matrixTextDim)).
 				PaddingLeft(1)
 
 	headerBorderBase = lipgloss.NewStyle().
-				Foreground(lipgloss.Color(tokyoSurfaceLine))
+				Foreground(lipgloss.Color(matrixBorder))
 
-	statusStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoMutedText))
-	errorStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoAccentRed)).Bold(true)
-	hintStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoSubtleText))
-	dimStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoSubtleText))
+	statusStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(matrixTextDim))
+	errorStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color(matrixAccentRed)).Bold(true)
+	hintStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color(matrixTextSubtle))
+	dimStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color(matrixTextSubtle))
 
 	modalStyle = lipgloss.NewStyle().
 			Padding(1, 3).
-			Border(lipgloss.NormalBorder()).
-			BorderForeground(lipgloss.Color(tokyoAccentPurple)).
-			Background(lipgloss.Color(tokyoSurface))
+			Border(lipgloss.ThickBorder()).
+			BorderForeground(lipgloss.Color(matrixAccentPink)).
+			Background(lipgloss.Color(matrixSurface))
 
 	modalContentStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color(tokyoText)).
-				Background(lipgloss.Color(tokyoSurface))
+				Foreground(lipgloss.Color(matrixText)).
+				Background(lipgloss.Color(matrixSurface))
 
 	modalTitleBase = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(tokyoAccentPurple)).
+			Foreground(lipgloss.Color(matrixAccentPink)).
 			Bold(true)
 
 	modalSubtitleStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color(tokyoMutedText))
+				Foreground(lipgloss.Color(matrixTextDim))
 
 	modalStatusBase = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(tokyoAccentCyan))
+			Foreground(lipgloss.Color(matrixAccentNeon))
 
 	modalConfirmBase = lipgloss.NewStyle().
-				Foreground(lipgloss.Color(tokyoBase)).
-				Background(lipgloss.Color(tokyoAccentGreen)).
+				Foreground(lipgloss.Color(matrixBlack)).
+				Background(lipgloss.Color(matrixAccentGreen)).
 				Bold(true).
 				Padding(0, 1)
 
 	modalCancelBase = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(tokyoMutedText)).
-			Background(lipgloss.Color(tokyoSurfaceAlt)).
+			Foreground(lipgloss.Color(matrixTextDim)).
+			Background(lipgloss.Color(matrixPanel)).
 			Padding(0, 1)
 
 	modalActionSpacer = lipgloss.NewStyle().
-				Foreground(lipgloss.Color(tokyoSubtleText))
+				Foreground(lipgloss.Color(matrixTextSubtle))
 
-	helpStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoMutedText))
+	helpStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(matrixTextDim))
 
 	helpPanelStyle = lipgloss.NewStyle().
 			Padding(1, 3).
-			Border(lipgloss.NormalBorder()).
-			BorderForeground(lipgloss.Color(tokyoSurfaceLine)).
-			Background(lipgloss.Color(tokyoSurface)).
-			Width(56)
+			Border(lipgloss.DoubleBorder()).
+			BorderForeground(lipgloss.Color(matrixBorder)).
+			Background(lipgloss.Color(matrixSurface)).
+			Width(60)
 
-	infoToastStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoAccentCyan))
-	successToastStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoAccentGreen))
-	errorToastStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoAccentRed))
+	infoToastStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color(matrixAccentNeon))
+	successToastStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(matrixAccentGreen))
+	errorToastStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color(matrixAccentRed))
 )
 
 const (
-	headerLines      = 3
+	headerLines      = 10
 	tableHeaderLines = 1
-	footerLines      = 3
-	helpLines        = 8
+	footerLines      = 5
+	helpLines        = 15
 )
